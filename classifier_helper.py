@@ -39,8 +39,17 @@ def sketch(kmer_set: str, s: int) -> set:
     """
     return sorted(kmer_set)[:s]
 
+
 def filter_human(input_sketch: set, human_set: set) -> set:
-    pass
+    """
+    Filters out elements in the input sketch that are present in the human set.
+    
+    :param input_sketch: Set of hashed k-mers from the input dataset.
+    :param human_set: Set of hashed k-mers representing human sequences.
+    :return: Set of k-mers from input_sketch not present in human_set.
+    """
+    return input_sketch.difference(human_set)
+
 
 def human_sketch(filename: str, k: int, s: int, seed: int, ci: int):
     genome = utils.load_dataset(filename)

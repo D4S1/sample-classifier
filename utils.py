@@ -28,6 +28,9 @@ def load_samples(filename: str) -> list:
         samples = f.read().strip().split("\n")[1:]
     return samples
 
+def load_dataset(filename: str):
+    pass
+
 def save_to_file(dataset_names: List[str], city_labels: List[str], classification_matrix: np.array, output_file: str) -> None:
     """
     Saves results to output format provided in task distription

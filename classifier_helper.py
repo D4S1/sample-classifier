@@ -22,7 +22,6 @@ def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
     """
     kmer_list = [mmh3.hash(seq[i:i+k], seed) for i in range(len(seq) - k + 1)]
     kmer_counts = Counter(kmer_list)
-
     return {kmer for kmer, count in kmer_counts.items() if count >= ci}
 
 

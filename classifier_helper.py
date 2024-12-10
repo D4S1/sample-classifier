@@ -1,6 +1,6 @@
 import utils
 import mmh3
-import pickle
+import numpy as np
 
 # ci = 4
 # T = 50% ?
@@ -86,6 +86,13 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
 def estimate_jackard(read_sketch: str, city_sketch: set, s: int) -> float:
     return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
 
+def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
+    """
+    :param jackard_estimates: NumPy array of shape (number of reads, number of cities).
+    :param T: Threshold value for comparison.
+    :return: Updated NumPy array with values as 0 or 1.
+    """
+    jackard_estimates = (jackard_estimates >= T).astype(int)
 
 genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
 utils.save_to_file(genome_sketch, 'data/human_sketch.pkl')

@@ -43,12 +43,12 @@ def load_dataset(filename: str) -> List[str]:
             line = line.strip()
             if line.startswith(">"):
                 if sequence:  # if there's an ongoing sequence, save it
-                    sequences.append("".join(sequence))
+                    sequences.append("".join(sequence).upper())
                     sequence = []  # reset for the next sequence
             else:
                 sequence.append(line)  # add to the current sequence
         if sequence:  # append the last sequence
-            sequences.append("".join(sequence))
+            sequences.append("".join(sequence).upper())
     return sequences
 
 def load_dataset2(filename: str) -> List[str]:
@@ -67,13 +67,13 @@ def load_dataset2(filename: str) -> List[str]:
             line = line.strip()
             if line.startswith(">"):
                 if sequence:  # if there's an ongoing sequence, save it
-                    sequences.append("".join(sequence))
+                    sequences.append("".join(sequence).upper())
                     sequence = []  # reset for the next sequence
                     i += 1
             else:
                 sequence.append(line)  # add to the current sequence
         if sequence:  # append the last sequence
-            sequences.append("".join(sequence))
+            sequences.append("".join(sequence).upper())
     return sequences
 
 

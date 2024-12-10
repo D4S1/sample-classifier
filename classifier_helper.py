@@ -25,7 +25,7 @@ def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
         if not 'N' in kmer:
             hashed_kmer = mmh3.hash(kmer, seed)
             kmer_counts[kmer] = kmer_counts.get(hashed_kmer, 0) + 1
-
+    print(kmer_counts)
     return {kmer for kmer, count in kmer_counts.items() if count >= ci}
 
 
@@ -101,7 +101,3 @@ def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     cities_sums = jackard_estimates.sum(axis=0)
     return np.argmax(cities_sums)  # return maximum column index
 
-
-genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
-print(f'{type(genome_sketch)=}\n{len(genome_sketch)=}')
-utils.save_to_file(genome_sketch, 'human_sketch.pkl')

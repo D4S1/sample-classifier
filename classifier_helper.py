@@ -66,6 +66,7 @@ def preprocess_dataset(dataset: list[str], k: int, s: int, seed:int, ci:int) -> 
         kmers = kmers.union(sketch(kmer_set(read, k, seed, ci), s))
     return sketch(kmers, s)
 
+
 def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, seed: int, ci: int):
     train_data = utils.load_ref(train_filename)
     cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
@@ -83,16 +84,23 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
 
     return cities_sketches
 
+
 def estimate_jackard(read_sketch: str, city_sketch: set, s: int) -> float:
     return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
 
+
 def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     """
+    Matches sample to city via simple sum criterion.
+
     :param jackard_estimates: NumPy array of shape (number of reads, number of cities).
     :param T: Threshold value for comparison.
     :return: Updated NumPy array with values as 0 or 1.
     """
     jackard_estimates = (jackard_estimates >= T).astype(int)
+    cities_sums = jackard_estimates.sum(axis=0)
+    return np.argmax(cities_sums)  # return maximum column index
 
-genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
-utils.save_to_file(genome_sketch, 'data/human_sketch.pkl')
+
+# genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
+# utils.save_to_file(genome_sketch, 'data/human_sketch.pkl')

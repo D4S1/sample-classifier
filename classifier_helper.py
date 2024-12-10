@@ -68,4 +68,4 @@ def preprocess_human_genome(filename: str) -> str:
     pass
 
 def estimate_jackard(read_sketch: str, city_sketch: set, s: int) -> float:
-    return  len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
+    return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s

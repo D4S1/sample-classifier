@@ -7,10 +7,22 @@ import utils
 # s
 
 def kmer_set(seq: str, k: int) -> set:
+    """
+    :param seq: read sequence
+    :param k: lenght of kmer
+    :return: set of uique kmers in given sequence
+    """
     pass
 
 def sketch(kmer_set: str, s: int) -> set:
-    pass
+    """
+    Takes a set of kmers and return set of s smallest ones
+
+    :param kmer_set: set of hashed or not kmers
+    :param s: size of sketch
+    :returns: set of s smallest kmers
+    """
+    return sorted(kmer_set)[:s]
 
 def filter_human(input_sketch: set, human_set: set) -> set:
     pass

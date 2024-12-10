@@ -43,7 +43,7 @@ def preprocess_dataset(dataset: ..., k: int, s: int) -> set:
     For each dataset, loop over reads and add k-mers to the set, return sketch of the set 
     """
 
-def preprocess_reference(train_filename: str, k: int, s: int):
+def preprocess_reference(train_filename: str, k: int, s: int, human_set: set):
     train_data = utils.load_ref(train_filename)
     cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
 
@@ -52,7 +52,11 @@ def preprocess_reference(train_filename: str, k: int, s: int):
         cities_sketches[city] = cities_sketches[city].union(preprocess_dataset(dataset, k, s))
     
     for city, sketch_set in cities_sketches.items():
-        cities_sketches[city] = sketch(sketch_set, s)
+        sketch_set = filter_human(sketch_set, human_set)
+        try:
+            cities_sketches[city] = sketch(sketch_set, s)
+        except Exception as e:
+            print(f'Sketch for {city} has less than s = {s} elements\n{e}')
 
     return cities_sketches
     

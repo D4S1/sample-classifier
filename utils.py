@@ -1,6 +1,7 @@
 from typing import List
 import numpy as np
 import gzip
+import pickle
 
 
 def load_ref(filename: str) -> dict:
@@ -50,6 +51,27 @@ def load_dataset(filename: str) -> List[str]:
             sequences.append("".join(sequence))
     return sequences
 
+def load_dataset2(filename: str) -> List[str]:
+    """
+    Load sequences from a gzipped FASTA file.
+    :param filename (str): Path to the gzipped FASTA file
+    :return: list of sequences as strings
+    """
+    sequences = []
+    with open(filename, 'r') as file:  # open in text mode
+        sequence = []
+        for line in file:
+            line = line.strip()
+            if line.startswith(">"):
+                if sequence:  # if there's an ongoing sequence, save it
+                    sequences.append("".join(sequence))
+                    sequence = []  # reset for the next sequence
+            else:
+                sequence.append(line)  # add to the current sequence
+        if sequence:  # append the last sequence
+            sequences.append("".join(sequence))
+    return sequences
+
 
 def save_to_file(dataset_names: List[str], city_labels: List[str], classification_matrix: np.array, output_file: str) -> None:
     """
@@ -76,3 +98,10 @@ def save_to_file(dataset_names: List[str], city_labels: List[str], classificatio
                     break
                 f.write(f"{city_prob}\t")
                 
+def save_to_file(obj, filename):
+    with open(filename, 'wb') as file:
+        pickle.dump(obj, file)
+
+def load_pickle(filename):
+    with open(filename, 'rb') as file:
+        return pickle.load(file)

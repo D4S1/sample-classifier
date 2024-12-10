@@ -1,6 +1,6 @@
 import utils
 import mmh3
-from collections import Counter
+import pickle
 
 # ci = 4
 # T = 50% ?
@@ -52,7 +52,7 @@ def filter_human(input_sketch: set, human_set: set) -> set:
 
 
 def human_sketch(filename: str, k: int, s: int, seed: int, ci: int):
-    genome = utils.load_dataset(filename)
+    genome = utils.load_dataset2(filename)
     genome = preprocess_dataset(genome, k, s, seed, ci)
     return genome
 
@@ -85,3 +85,7 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
 
 def estimate_jackard(read_sketch: str, city_sketch: set, s: int) -> float:
     return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
+
+
+genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
+utils.save_to_file(genome_sketch, 'data/human_sketch.pkl')

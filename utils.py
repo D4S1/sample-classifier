@@ -32,12 +32,8 @@ def load_samples(filename: str) -> list:
 def load_dataset(filename: str) -> List[str]:
     """
     Load sequences from a gzipped FASTA file.
-    
-    Parameters:
-        filename (str): Path to the gzipped FASTA file.
-    
-    Returns:
-        list: A list of sequences as strings.
+    :param filename (str): Path to the gzipped FASTA file
+    :return: list of sequences as strings
     """
     sequences = []
     with gzip.open(filename, 'rt') as file:  # open in text mode

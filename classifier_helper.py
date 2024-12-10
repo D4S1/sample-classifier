@@ -39,8 +39,17 @@ def sketch(kmer_set: str, s: int) -> set:
     """
     return sorted(kmer_set)[:s]
 
+
 def filter_human(input_sketch: set, human_set: set) -> set:
-    pass
+    """
+    Filters out elements in the input sketch that are present in the human set.
+    
+    :param input_sketch: Set of hashed k-mers from the input dataset.
+    :param human_set: Set of hashed k-mers representing human sequences.
+    :return: Set of k-mers from input_sketch not present in human_set.
+    """
+    return {kmer for kmer in input_sketch if kmer not in human_set}
+
 
 def preprocess_dataset(dataset: ..., k: int, s: int) -> set:
     """

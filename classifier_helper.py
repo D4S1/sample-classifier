@@ -101,3 +101,6 @@ def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     cities_sums = jackard_estimates.sum(axis=0)
     return np.argmax(cities_sums)  # return maximum column index
 
+human_sketch = human_sketch('GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
+print(f'{type(human_sketch)=}\t {len(human_sketch)=}')
+utils.save_to_file(human_sketch, 'human_sketch.pkl')

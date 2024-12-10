@@ -1,4 +1,5 @@
 import utils
+import mmh3
 
 # ci = 4
 # T = 50% ?
@@ -6,13 +7,17 @@ import utils
 # k = 24
 # s
 
-def kmer_set(seq: str, k: int) -> set:
+def kmer_set(seq: str, k: int, seed: int) -> set:
     """
     :param seq: read sequence
     :param k: lenght of kmer
-    :return: set of uique kmers in given sequence
+    :return: set of unique kmers in given sequence
     """
-    pass
+    unique_kmers = set()
+    for i in range(len(seq) - k + 1):
+        unique_kmers.add(mmh3.hash(seq[i:i+k], seed))
+    return unique_kmers
+
 
 def sketch(kmer_set: str, s: int) -> set:
     """

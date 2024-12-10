@@ -1,5 +1,6 @@
 import utils
 import mmh3
+from collections import Counter
 
 # ci = 4
 # T = 50% ?
@@ -7,16 +8,22 @@ import mmh3
 # k = 24
 # s
 
-def kmer_set(seq: str, k: int, seed: int) -> set:
+# Jakby coś nie działało, to sprawdzić czy mamy 'N' w readsach
+
+def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
     """
-    :param seq: read sequence
-    :param k: lenght of kmer
-    :return: set of unique kmers in given sequence
+    Generate a set of unique k-mers from a sequence, filtered by occurrence count.
+
+    :param seq: Read sequence (string).
+    :param k: Length of k-mer (int).
+    :param seed: Seed for hash function (int).
+    :param ci: Minimum count threshold for k-mers (int).
+    :return: Set of unique k-mers appearing at least 'ci' times.
     """
-    unique_kmers = set()
-    for i in range(len(seq) - k + 1):
-        unique_kmers.add(mmh3.hash(seq[i:i+k], seed))
-    return unique_kmers
+    kmer_list = [mmh3.hash(seq[i:i+k], seed) for i in range(len(seq) - k + 1)]
+    kmer_counts = Counter(kmer_list)
+
+    return {kmer for kmer, count in kmer_counts.items() if count >= ci}
 
 
 def sketch(kmer_set: str, s: int) -> set:

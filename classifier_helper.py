@@ -6,9 +6,8 @@ from collections import Counter
 # T = 50% ?
 # M = 8 ?
 # k = 24
-# s
+# s = 1000?
 
-# Jakby coś nie działało, to sprawdzić czy mamy 'N' w readsach
 
 def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
     """
@@ -20,8 +19,13 @@ def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
     :param ci: Minimum count threshold for k-mers (int).
     :return: Set of unique k-mers appearing at least 'ci' times.
     """
-    kmer_list = [mmh3.hash(seq[i:i+k], seed) for i in range(len(seq) - k + 1)]
-    kmer_counts = Counter(kmer_list)
+    kmer_counts = {}
+    for i in range(len(seq) - k + 1):
+        kmer = seq[i:i+k]
+        if not 'N' in kmer:
+            hashed_kmer = mmh3.hash(kmer, seed)
+            kmer_counts[kmer] = kmer_counts.get(hashed_kmer, 0) + 1
+
     return {kmer for kmer, count in kmer_counts.items() if count >= ci}
 
 
@@ -59,8 +63,6 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set):
             print(f'Sketch for {city} has less than s = {s} elements\n{e}')
 
     return cities_sketches
-    
 
-
-
-
+def preprocess_human_genome(filename: str) -> str:
+    pass

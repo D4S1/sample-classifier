@@ -60,12 +60,16 @@ def load_dataset2(filename: str) -> List[str]:
     sequences = []
     with open(filename, 'r') as file:  # open in text mode
         sequence = []
+        i = 0
         for line in file:
+            if i == 3:
+                break
             line = line.strip()
             if line.startswith(">"):
                 if sequence:  # if there's an ongoing sequence, save it
                     sequences.append("".join(sequence))
                     sequence = []  # reset for the next sequence
+                    i += 1
             else:
                 sequence.append(line)  # add to the current sequence
         if sequence:  # append the last sequence

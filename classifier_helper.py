@@ -37,7 +37,7 @@ def sketch(kmer_set: str, s: int) -> set:
     :param s: size of sketch
     :returns: set of s smallest kmers
     """
-    return sorted(kmer_set)[:s]
+    return set(sorted(kmer_set)[:s])
 
 
 def filter_human(input_sketch: set, human_set: set) -> set:
@@ -102,5 +102,6 @@ def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     return np.argmax(cities_sums)  # return maximum column index
 
 
-# genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
-# utils.save_to_file(genome_sketch, 'data/human_sketch.pkl')
+genome_sketch = human_sketch('data/GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
+print(f'{type(genome_sketch)=}\n{len(genome_sketch)=}')
+utils.save_to_file(genome_sketch, 'human_sketch.pkl')

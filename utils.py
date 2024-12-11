@@ -62,7 +62,7 @@ def load_dataset2(filename: str) -> List[str]:
         sequence = []
         i = 0
         for line in file:
-            if i == 3:
+            if i == 2:
                 break
             line = line.strip()
             if line.startswith(">"):

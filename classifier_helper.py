@@ -1,6 +1,7 @@
 import utils
 import mmh3
 import numpy as np
+from typing import List, Set, Dict
 
 # ci = 4
 # T = 50% ?
@@ -59,7 +60,14 @@ def human_sketch(filename: str, k: int, s: int, seed: int, ci: int):
 
 def preprocess_dataset(dataset: list[str], k: int, s: int, seed:int, ci:int) -> set:
     """
-    For given dataset, loop over reads and add k-mers to the result set, return sketch of the set 
+    Preprocesses a dataset by extracting k-mers and returning a sketch of the dataset.
+
+    :param dataset: List of sequneces
+    :param k: k-mer size.
+    :param s: Sketch size.
+    :param seed: Random seed for reproducibility.
+    :param ci: minimum  kmer frequency
+    :return: Sketch of the k-mer set with size s.
     """
     kmers = set()
     for read in dataset:
@@ -67,7 +75,17 @@ def preprocess_dataset(dataset: list[str], k: int, s: int, seed:int, ci:int) -> 
     return sketch(kmers, s)
 
 
-def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, seed: int, ci: int):
+def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, seed: int, ci: int) -> dict:
+    """
+    Preprocesses a dataset by extracting k-mers and returning a dictionary with skeuches of the cities.
+
+    :param train_filename: file containing meta filenames of reference datasets with their classification.
+    :param k: kmer size.
+    :param s: sketch size.
+    :param seed: Random seed for reproducibility.
+    :param ci: minimum  kmer frequency
+    :return: dictionary of the k-mer sketches of size s representing cities.
+    """
     train_data = utils.load_ref(train_filename)
     cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
 
@@ -85,7 +103,15 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
     return cities_sketches
 
 
-def estimate_jackard(read_sketch: str, city_sketch: set, s: int) -> float:
+def estimate_jackard(read_sketch: set, city_sketch: set, s: int) -> float:
+    """
+    Estimates the Jaccard similarity between a read sketch and a city sketch.
+
+    :param read_sketch: Sketch of the read.
+    :param city_sketch: Sketch of the city.
+    :param s: Sketch size.
+    :return: Estimated Jaccard similarity.
+    """
     return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
 
 
@@ -101,6 +127,107 @@ def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     cities_sums = jackard_estimates.sum(axis=0)
     return np.argmax(cities_sums)  # return maximum column index
 
-human_sketch = human_sketch('GCA_000001405.15_GRCh38_genomic.fna', k=24, s=1000, seed=12345, ci=4)
-print(f'{type(human_sketch)=}\t {len(human_sketch)=}')
-utils.save_to_file(human_sketch, 'human_sketch.pkl')
+
+def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) -> dict:
+    """
+    Calculate simple, fractional, and weighted scores for each class based on match rate scores.
+
+    :param read_scores: NumPy array of shape (number of reads, number of classes) containing match rate scores for reads.
+    :param threshold: Minimum score to consider a match.
+    :param max_matches: Maximum number of matches allowed per read.
+    :return: Dictionary containing simple, fractional, and weighted scores for each class.
+    """
+    n_col = read_scores.shape[1]
+    scores = {
+        "simple": [0] * n_col,
+        "fractional": [0] * n_col,
+        "weighted": [0] * n_col,
+    }
+
+    for read in read_scores:
+        matching_classes = [(city, score) for city, score in enumerate(read) if score >= threshold]
+        if len(matching_classes) <= max_matches:
+
+            n = len(matching_classes)
+            total_score = sum(score for _, score in matching_classes)
+
+            for city, score in matching_classes:
+                scores['simple'][city] += 1
+                if n > 0:
+                    scores['fractional'][city] += 1 / n
+                if total_score > 0:
+                    scores['weighted'][city] += score / total_score
+    return scores
+
+def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: int, ci: int) -> List[set]:
+    """
+    Preprocess a sample by generating sketches for each read after filtering human sequences.
+
+    :param filename: Path to the input FASTA file.
+    :param k: Length of k-mers to generate.
+    :param s: Size of the sketch.
+    :param seed: Seed for hash functions used in sketching.
+    :param ci: Context-specific parameter for generating k-mers.
+    :return: List of sketches (sets) representing the reads in the sample.
+    """
+    dataset = utils.load_dataset(filename)
+    kmers_sets = []
+
+    for read in dataset:
+        kmers = kmer_set(read, k, seed, ci)
+        sketch = sketch(kmers, s)
+        if len(sketch & human_sketch) == 0:  # Filter out reads overlapping with human sequences
+            kmers_sets.append(sketch)
+            
+    return kmers_sets
+
+def classify_sample(sample_sketches: List[Set[int]], reference: Dict[str, Set[int]]) -> np.array:
+    """
+    Classify a sample by comparing read sketches against reference sketches.
+
+    :param sample_sketches: List of sketches representing the reads in the sample.
+    :param reference: Dictionary of reference sketches (key: class name, value: sketch set).
+    :return: NumPy array of shape (number of reads, number of reference classes) with similarity scores.
+    """
+    n_reads = len(sample_sketches)
+    n_classes = len(reference)
+    score_matrix = np.zeros((n_reads, n_classes))
+
+    reference_items = list(reference.items())
+    for i, read_sketch in enumerate(sample_sketches):
+        for j, (class_name, class_sketch) in enumerate(reference_items):
+            score_matrix[i, j] = estimate_jaccard(read_sketch, class_sketch, len(read_sketch))
+
+    return score_matrix
+
+def classify_samples(samples_filenames: List[str], cities_labels: List[str], k: int, s: int, seed: int, ci: int) -> Dict[str, np.array]:
+    """
+    Classify multiple samples, calculating scores for each sample and reference class.
+
+    :param samples_filenames: List of file paths for input samples.
+    :param cities_labels: List of reference class names.
+    :param k: Length of k-mers to generate.
+    :param s: Size of the sketch.
+    :param seed: Seed for hash functions used in sketching.
+    :param ci: Context-specific parameter for generating k-mers.
+    :return: Dictionary containing classification matrices for each score type.
+    """
+    n_samples = len(samples_filenames)
+    n_classes = len(cities_labels)
+
+    results = {
+        "simple": np.zeros((n_samples, n_classes)),
+        "fractional": np.zeros((n_samples, n_classes)),
+        "weighted": np.zeros((n_samples, n_classes)),
+    }
+
+    for sample_idx, filename in enumerate(samples_filenames):
+        sample_sketches = preprocess_sample(filename, k, s, seed, ci)
+        score_matrix = classify_sample(sample_sketches, {label: get_city_sketch(label) for label in cities_labels})
+        sample_scores = calculate_scores(score_matrix, threshold=0.5, max_matches=5)  # Example threshold/max_matches
+
+        for score_type in results.keys():
+            results[score_type][sample_idx, :] = sample_scores[score_type]
+
+    return results
+

@@ -37,7 +37,7 @@ def load_dataset(filename: str) -> List[str]:
     :return: list of sequences as strings
     """
     sequences = []
-    with gzip.open(filename, 'rt') as file:  # open in text mode
+    with gzip.open(f'data/{filename}', 'rt') as file:  # open in text mode
         sequence = []
         for line in file:
             line = line.strip()
@@ -45,31 +45,6 @@ def load_dataset(filename: str) -> List[str]:
                 if sequence:  # if there's an ongoing sequence, save it
                     sequences.append("".join(sequence).upper())
                     sequence = []  # reset for the next sequence
-            else:
-                sequence.append(line)  # add to the current sequence
-        if sequence:  # append the last sequence
-            sequences.append("".join(sequence).upper())
-    return sequences
-
-def load_dataset2(filename: str) -> List[str]:
-    """
-    Load sequences from a gzipped FASTA file.
-    :param filename (str): Path to the gzipped FASTA file
-    :return: list of sequences as strings
-    """
-    sequences = []
-    with open(filename, 'r') as file:  # open in text mode
-        sequence = []
-        i = 0
-        for line in file:
-            if i == 2:
-                break
-            line = line.strip()
-            if line.startswith(">"):
-                if sequence:  # if there's an ongoing sequence, save it
-                    sequences.append("".join(sequence).upper())
-                    sequence = []  # reset for the next sequence
-                    i += 1
             else:
                 sequence.append(line)  # add to the current sequence
         if sequence:  # append the last sequence

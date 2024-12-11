@@ -2,12 +2,8 @@ import utils
 import mmh3
 import numpy as np
 from typing import List, Set, Dict
-
-# ci = 4
-# T = 50% ?
-# M = 8 ?
-# k = 24
-# s = 1000?
+import gzip
+import re
 
 
 def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
@@ -25,8 +21,7 @@ def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
         kmer = seq[i:i+k]
         if not 'N' in kmer:
             hashed_kmer = mmh3.hash(kmer, seed)
-            kmer_counts[kmer] = kmer_counts.get(hashed_kmer, 0) + 1
-    print(kmer_counts)
+            kmer_counts[hashed_kmer] = kmer_counts.get(hashed_kmer, 0) + 1
     return {kmer for kmer, count in kmer_counts.items() if count >= ci}
 
 
@@ -52,13 +47,7 @@ def filter_human(input_sketch: set, human_set: set) -> set:
     return input_sketch.difference(human_set)
 
 
-def human_sketch(filename: str, k: int, s: int, seed: int, ci: int):
-    genome = utils.load_dataset2(filename)
-    genome = preprocess_dataset(genome, k, s, seed, ci)
-    return genome
-
-
-def preprocess_dataset(dataset: list[str], k: int, s: int, seed:int, ci:int) -> set:
+def preprocess_dataset(filename: str, k: int, s: int, seed: int, ci: int):
     """
     Preprocesses a dataset by extracting k-mers and returning a sketch of the dataset.
 
@@ -69,10 +58,19 @@ def preprocess_dataset(dataset: list[str], k: int, s: int, seed:int, ci:int) -> 
     :param ci: minimum  kmer frequency
     :return: Sketch of the k-mer set with size s.
     """
-    kmers = set()
-    for read in dataset:
-        kmers = kmers.union(sketch(kmer_set(read, k, seed, ci), s))
-    return sketch(kmers, s)
+    dataset_sketch = set()
+    with gzip.open(f'data/{filename}', 'rt') as f:
+        while True:
+            chunk = f.read(10**6)
+            chunk = re.sub(r'>.*\n', 'N', chunk)
+            chunk = chunk.replace('\n', '').upper()
+
+            dataset_sketch = dataset_sketch.union(kmer_set(chunk, k, seed, ci))
+            if len(dataset_sketch) >= 50**6:
+                dataset_sketch = sketch(dataset_sketch, s)
+            if not chunk:
+                break
+    return sketch(dataset_sketch, s)
 
 
 def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, seed: int, ci: int) -> dict:
@@ -90,8 +88,7 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
     cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
 
     for filename, city in train_data.items():
-        dataset = utils.load_dataset(filename)
-        cities_sketches[city] = cities_sketches[city].union(preprocess_dataset(dataset, k, s, seed, ci))
+        cities_sketches[city] = cities_sketches[city].union(preprocess_dataset(filename, k=k, s=s, seed=seed, ci=ci))
     
     for city, sketch_set in cities_sketches.items():
         sketch_set = filter_human(sketch_set, human_set)
@@ -171,17 +168,16 @@ def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: in
     :return: List of sketches (sets) representing the reads in the sample.
     """
     dataset = utils.load_dataset(filename)
-    kmers_sets = []
+    reads_sketches = []
 
     for read in dataset:
-        kmers = kmer_set(read, k, seed, ci)
-        sketch = sketch(kmers, s)
-        if len(sketch & human_sketch) == 0:  # Filter out reads overlapping with human sequences
-            kmers_sets.append(sketch)
-            
-    return kmers_sets
+        read_kmers = kmer_set(read, k, seed, ci=1)
+        read_sketch = sketch(read_kmers, s)
+        if len(read_sketch & human_sketch) == 0:  # Filter out reads overlapping with human sequences
+            reads_sketches.append(read_sketch)
+    return reads_sketches
 
-def classify_sample(sample_sketches: List[Set[int]], reference: Dict[str, Set[int]]) -> np.array:
+def classify_sample(sample_sketches: List[set], reference: Dict[str, Set[int]]) -> np.array:
     """
     Classify a sample by comparing read sketches against reference sketches.
 
@@ -190,17 +186,16 @@ def classify_sample(sample_sketches: List[Set[int]], reference: Dict[str, Set[in
     :return: NumPy array of shape (number of reads, number of reference classes) with similarity scores.
     """
     n_reads = len(sample_sketches)
-    n_classes = len(reference)
-    score_matrix = np.zeros((n_reads, n_classes))
+    n_cities = len(reference)
+    score_matrix = np.zeros((n_reads, n_cities))
 
-    reference_items = list(reference.items())
     for i, read_sketch in enumerate(sample_sketches):
-        for j, (class_name, class_sketch) in enumerate(reference_items):
-            score_matrix[i, j] = estimate_jaccard(read_sketch, class_sketch, len(read_sketch))
+        for j, (class_name, class_sketch) in enumerate(reference.items()):
+            score_matrix[i, j] = estimate_jackard(read_sketch, class_sketch, len(read_sketch))
 
     return score_matrix
 
-def classify_samples(samples_filenames: List[str], cities_labels: List[str], k: int, s: int, seed: int, ci: int) -> Dict[str, np.array]:
+def classify_samples(test_data_file: str, output_file: str, reference_data: dict, human_set: set, k: int, s: int, seed: int, ci: int) -> Dict[str, np.array]:
     """
     Classify multiple samples, calculating scores for each sample and reference class.
 
@@ -212,8 +207,10 @@ def classify_samples(samples_filenames: List[str], cities_labels: List[str], k: 
     :param ci: Context-specific parameter for generating k-mers.
     :return: Dictionary containing classification matrices for each score type.
     """
+    samples_filenames = utils.load_samples(test_data_file)
+    city_labels = list(reference_data.keys())
     n_samples = len(samples_filenames)
-    n_classes = len(cities_labels)
+    n_classes = len(reference_data)
 
     results = {
         "simple": np.zeros((n_samples, n_classes)),
@@ -222,12 +219,15 @@ def classify_samples(samples_filenames: List[str], cities_labels: List[str], k: 
     }
 
     for sample_idx, filename in enumerate(samples_filenames):
-        sample_sketches = preprocess_sample(filename, k, s, seed, ci)
-        score_matrix = classify_sample(sample_sketches, {label: get_city_sketch(label) for label in cities_labels})
+        sample_sketches = preprocess_sample(filename, human_set, k, s, seed, ci)
+        score_matrix = classify_sample(sample_sketches, reference_data)
         sample_scores = calculate_scores(score_matrix, threshold=0.5, max_matches=5)  # Example threshold/max_matches
 
         for score_type in results.keys():
             results[score_type][sample_idx, :] = sample_scores[score_type]
+
+    for score_type in results.keys():
+        utils.save_to_file(samples_filenames, city_labels, results[score_type], f'data/outs/{output_file}_{score_type}.tsv')
 
     return results
 

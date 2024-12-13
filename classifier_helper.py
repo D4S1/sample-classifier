@@ -58,6 +58,7 @@ def preprocess_dataset(filename: str, k: int, s: int, seed: int, ci: int):
     :param ci: minimum  kmer frequency
     :return: Sketch of the k-mer set with size s.
     """
+    ci = 1
     dataset_sketch = set()
     with gzip.open(f'data/{filename}', 'rt') as f:
         while True:
@@ -65,7 +66,8 @@ def preprocess_dataset(filename: str, k: int, s: int, seed: int, ci: int):
             chunk = re.sub(r'>.*\n', 'N', chunk)
             chunk = chunk.replace('\n', '').upper()
 
-            dataset_sketch = dataset_sketch.union(kmer_set(chunk, k, seed, ci))
+            chunk_kmers = kmer_set(chunk, k, seed, ci)
+            dataset_sketch = dataset_sketch.union(chunk_kmers)
             if len(dataset_sketch) >= 50**6:
                 dataset_sketch = sketch(dataset_sketch, s)
             if not chunk:
@@ -88,7 +90,8 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
     cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
 
     for filename, city in train_data.items():
-        cities_sketches[city] = cities_sketches[city].union(preprocess_dataset(filename, k=k, s=s, seed=seed, ci=ci))
+        dataset_sketch = preprocess_dataset(filename, k=k, s=s, seed=seed, ci=ci)
+        cities_sketches[city] = cities_sketches[city].union(dataset_sketch)
     
     for city, sketch_set in cities_sketches.items():
         sketch_set = filter_human(sketch_set, human_set)
@@ -141,8 +144,9 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
         "weighted": [0] * n_col,
     }
 
-    for read in read_scores:
+    for read in read_scores:                
         matching_classes = [(city, score) for city, score in enumerate(read) if score >= threshold]
+        print(f'{len(matching_classes)}')
         if len(matching_classes) <= max_matches:
 
             n = len(matching_classes)
@@ -156,7 +160,7 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
                     scores['weighted'][city] += score / total_score
     return scores
 
-def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: int, ci: int) -> List[set]:
+def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: int, ci: int, bin_size: int) -> List[set]:
     """
     Preprocess a sample by generating sketches for each read after filtering human sequences.
 
@@ -169,12 +173,17 @@ def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: in
     """
     dataset = utils.load_dataset(filename)
     reads_sketches = []
-
+    bin, bin_counter = set(), 0
     for read in dataset:
         read_kmers = kmer_set(read, k, seed, ci=1)
-        read_sketch = sketch(read_kmers, s)
-        if len(read_sketch & human_sketch) == 0:  # Filter out reads overlapping with human sequences
-            reads_sketches.append(read_sketch)
+        if len(read_kmers & human_sketch) == 0:  # Filter out reads overlapping with human sequences
+            bin = bin.union(read_kmers)
+            bin_counter += 1
+        if bin_size <= bin_counter:
+            reads_sketches.append(sketch(bin, s))
+            bin, bin_counter = set(), 0
+    if bin_size <= bin_counter:
+        reads_sketches.append(sketch(bin, s))
     return reads_sketches
 
 def classify_sample(sample_sketches: List[set], reference: Dict[str, Set[int]]) -> np.array:
@@ -195,7 +204,7 @@ def classify_sample(sample_sketches: List[set], reference: Dict[str, Set[int]]) 
 
     return score_matrix
 
-def classify_samples(test_data_file: str, output_file: str, reference_data: dict, human_set: set, k: int, s: int, seed: int, ci: int) -> Dict[str, np.array]:
+def classify_samples(test_data_file: str, output_file: str, reference_data: dict, human_set: set, k: int, s: int, seed: int, ci: int, threshold: float, bin_size: int) -> Dict[str, np.array]:
     """
     Classify multiple samples, calculating scores for each sample and reference class.
 
@@ -205,29 +214,31 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     :param s: Size of the sketch.
     :param seed: Seed for hash functions used in sketching.
     :param ci: Context-specific parameter for generating k-mers.
+    :param bin_size: Size of bin utilse to create comparable size skeches for sample
     :return: Dictionary containing classification matrices for each score type.
     """
     samples_filenames = utils.load_samples(test_data_file)
     city_labels = list(reference_data.keys())
     n_samples = len(samples_filenames)
     n_classes = len(reference_data)
-
     results = {
         "simple": np.zeros((n_samples, n_classes)),
         "fractional": np.zeros((n_samples, n_classes)),
         "weighted": np.zeros((n_samples, n_classes)),
+        'jc': np.zeros((n_samples, n_classes))
     }
 
     for sample_idx, filename in enumerate(samples_filenames):
-        sample_sketches = preprocess_sample(filename, human_set, k, s, seed, ci)
+        print(f'{sample_idx=}')
+        sample_sketches = preprocess_sample(filename, human_set, k, s, seed, ci, bin_size)
         score_matrix = classify_sample(sample_sketches, reference_data)
-        sample_scores = calculate_scores(score_matrix, threshold=0.5, max_matches=5)  # Example threshold/max_matches
+        results['jc'][sample_idx, :] = np.sum(score_matrix, axis=0)
+        # sample_scores = calculate_scores(score_matrix, threshold, max_matches=5)  # Example threshold/max_matches
+        # for score_type in results.keys():
+        #     results[score_type][sample_idx, :] = sample_scores[score_type]
 
-        for score_type in results.keys():
-            results[score_type][sample_idx, :] = sample_scores[score_type]
-
-    for score_type in results.keys():
-        utils.save_to_file(samples_filenames, city_labels, results[score_type], f'data/outs/{output_file}_{score_type}.tsv')
-
-    return results
+    # for score_type in results.keys():
+    #    utils.save_to_file(samples_filenames, city_labels, results[score_type], f'data/outs/{output_file}_{score_type}.tsv')
+    utils.save_to_file(samples_filenames, city_labels, results['jc'], f'data/outs/{output_file}_jc.tsv')
+    return score_matrix
 

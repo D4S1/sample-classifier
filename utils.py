@@ -77,7 +77,7 @@ def save_to_file(dataset_names: List[str], city_labels: List[str], classificatio
                     break
                 f.write(f"{city_prob}\t")
                 
-def save_to_file(obj, filename):
+def save_to_pickle(obj, filename):
     with open(filename, 'wb') as file:
         pickle.dump(obj, file)
 

@@ -111,6 +111,15 @@ def estimate_jackard(read_kmers: list, city_kmers: set) -> float:
     """
     return len(set(read_kmers) & city_kmers) / len(set(read_kmers) | city_kmers)
 
+def cometa_score(read_kmers: list, city_kmers: set, k: int) -> float:
+    last = -k
+    score = 0
+    for i, kmer in enumerate(read_kmers):
+        if kmer in city_kmers:
+            score += k - max(k + last - i, 0)
+    return score / (len(read_kmers) + k - 1)
+
+
 
 def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
     """
@@ -172,6 +181,7 @@ def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int) -> Li
     reads_kmers = []
 
     for read in dataset:
+        read = read + "N" + reverse_complement(read)
         read_kmers = [mmh3.hash(read[i:i+k], seed) for i in range(len(read) - k + 1) if 'N' not in read[i:i+k]]
         if len(set(read_kmers) & human_sketch) == 0:  # Filter out reads overlapping with human sequences
             reads_kmers.append(read_kmers)
@@ -232,3 +242,21 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     utils.save_to_file(samples_filenames, city_labels, results['jc'], f'data/outs/{output_file}_jc.tsv')
     return score_matrix
 
+def reverse_complement(seq: str) -> str:
+    complement = {
+        'A': 'T',
+        'T': 'A',
+        'C': 'G',
+        'G': 'C',
+        'N': 'N',
+        'a': 't',
+        't': 'a',
+        'c': 'g',
+        'g': 'c',
+        'n': 'N'
+    }
+    
+    rev_seq = ['A'] * len(seq)  # arbitrary initialization of reversed complement sequence
+    for i in range(len(seq)-1, -1, -1): 
+        rev_seq[len(seq)-1-i] = complement[seq[i]]
+    return ''.join(rev_seq)

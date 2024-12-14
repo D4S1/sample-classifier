@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Set, Dict
 import gzip
 import re
+import Bio
 
 
 def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
@@ -242,3 +243,19 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     utils.save_to_file(samples_filenames, city_labels, results['jc'], f'data/outs/{output_file}_jc.tsv')
     return score_matrix
 
+def reverse_complement(seq: str) -> str:
+    complement = {
+        'A': 'T',
+        'T': 'A',
+        'C': 'G',
+        'G': 'C',
+        'a': 't',
+        't': 'a',
+        'c': 'g',
+        'g': 'c'
+    }
+    
+    rev_seq = ['A'] * len(seq)  # arbitrary initialization of reversed complement sequence
+    for i in range(len(seq)-1, -1, -1): 
+        rev_seq[len(seq)-1-i] = complement[seq[i]]
+    return ''.join(rev_seq)

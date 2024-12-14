@@ -9,7 +9,7 @@ def load_ref(filename: str) -> dict:
     Load training data, which has following columns of interest for each dataset (row):
     fasta_file, geo_loc_name
     :param filename: path to the training data
-    :return:
+    :return: 
     """
     ref_data = {}
     with open(filename) as f:

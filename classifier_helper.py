@@ -235,7 +235,7 @@ def classify_sample(sample_sketches: List[set], reference: Dict[str, set], city_
 
     return score_matrix
 
-def classify_samples(test_data_file: str, output_file: str, reference_data: dict, city_labels: List[str], human_set: set, k: int, M: int, T: int) -> Dict[str, np.array]:
+def classify_samples(test_data_file: str, output_file: str, reference_data: dict, city_labels: List[str], human_set: set, k: int, seed: int, M: int, T: int) -> Dict[str, np.array]:
     """
     Classify multiple samples, calculating scores for each sample and reference class.
 

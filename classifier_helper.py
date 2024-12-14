@@ -4,7 +4,6 @@ import numpy as np
 from typing import List, Set, Dict
 import gzip
 import re
-import Bio
 
 
 def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
@@ -88,7 +87,8 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
     :return: dictionary of the k-mer sketches of size s representing cities.
     """
     train_data = utils.load_ref(train_filename)
-    cities_sketches = {city : set() for city in set(train_data.values())}  # {city : set of dataset sketches}
+    city_labels = list(set(train_data.values()))
+    cities_sketches = {city : set() for city in city_labels}  # {city : set of dataset sketches}
 
     for filename, city in train_data.items():
         dataset_sketch = preprocess_dataset(filename, k=k, s=s, seed=seed, ci=ci)
@@ -96,15 +96,11 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
     
     for city, sketch_set in cities_sketches.items():
         sketch_set = filter_human(sketch_set, human_set)
-        try:
-            cities_sketches[city] = sketch(sketch_set, s)
-        except Exception as e:
-            print(f'Sketch for {city} has less than s = {s} elements\n{e}')
 
-    return cities_sketches
+    return city_labels, cities_sketches
 
 
-def estimate_jackard(read_sketch: set, city_sketch: set, s: int) -> float:
+def estimate_jackard(read_kmers: list, city_kmers: set) -> float:
     """
     Estimates the Jaccard similarity between a read sketch and a city sketch.
 
@@ -113,7 +109,7 @@ def estimate_jackard(read_sketch: set, city_sketch: set, s: int) -> float:
     :param s: Sketch size.
     :return: Estimated Jaccard similarity.
     """
-    return len(sketch(read_sketch.union(city_sketch), s).intersection(read_sketch).intersection(city_sketch)) / s
+    return len(set(read_kmers) & city_kmers) / len(set(read_kmers) | city_kmers)
 
 
 def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
@@ -161,7 +157,7 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
                     scores['weighted'][city] += score / total_score
     return scores
 
-def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: int, ci: int, bin_size: int) -> List[set]:
+def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int) -> List[set]:
     """
     Preprocess a sample by generating sketches for each read after filtering human sequences.
 
@@ -173,21 +169,15 @@ def preprocess_sample(filename: str, human_sketch: set, k: int, s: int, seed: in
     :return: List of sketches (sets) representing the reads in the sample.
     """
     dataset = utils.load_dataset(filename)
-    reads_sketches = []
-    bin, bin_counter = set(), 0
-    for read in dataset:
-        read_kmers = kmer_set(read, k, seed, ci=1)
-        if len(read_kmers & human_sketch) == 0:  # Filter out reads overlapping with human sequences
-            bin = bin.union(read_kmers)
-            bin_counter += 1
-        if bin_size <= bin_counter:
-            reads_sketches.append(sketch(bin, s))
-            bin, bin_counter = set(), 0
-    if bin_size <= bin_counter:
-        reads_sketches.append(sketch(bin, s))
-    return reads_sketches
+    reads_kmers = []
 
-def classify_sample(sample_sketches: List[set], reference: Dict[str, Set[int]]) -> np.array:
+    for read in dataset:
+        read_kmers = [mmh3.hash(read[i:i+k], seed) for i in range(len(read) - k + 1) if 'N' not in read[i:i+k]]
+        if len(set(read_kmers) & human_sketch) == 0:  # Filter out reads overlapping with human sequences
+            reads_kmers.append(read_kmers)
+    return reads_kmers
+
+def classify_sample(sample_sketches: List[set], reference: Dict[str, set], city_labes: List[str]) -> np.array:
     """
     Classify a sample by comparing read sketches against reference sketches.
 
@@ -196,16 +186,16 @@ def classify_sample(sample_sketches: List[set], reference: Dict[str, Set[int]]) 
     :return: NumPy array of shape (number of reads, number of reference classes) with similarity scores.
     """
     n_reads = len(sample_sketches)
-    n_cities = len(reference)
+    n_cities = len(city_labes)
     score_matrix = np.zeros((n_reads, n_cities))
 
-    for i, read_sketch in enumerate(sample_sketches):
-        for j, (class_name, class_sketch) in enumerate(reference.items()):
-            score_matrix[i, j] = estimate_jackard(read_sketch, class_sketch, len(read_sketch))
+    for i, read_kmers in enumerate(sample_sketches):
+        for j, city in enumerate(city_labes):
+            score_matrix[i, j] = estimate_jackard(read_kmers, reference[city])
 
     return score_matrix
 
-def classify_samples(test_data_file: str, output_file: str, reference_data: dict, human_set: set, k: int, s: int, seed: int, ci: int, threshold: float, bin_size: int) -> Dict[str, np.array]:
+def classify_samples(test_data_file: str, output_file: str, reference_data: dict, city_labels: List[str], human_set: set, k: int, s: int, seed: int, ci: int, threshold: float, bin_size: int) -> Dict[str, np.array]:
     """
     Classify multiple samples, calculating scores for each sample and reference class.
 
@@ -219,9 +209,8 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     :return: Dictionary containing classification matrices for each score type.
     """
     samples_filenames = utils.load_samples(test_data_file)
-    city_labels = list(reference_data.keys())
     n_samples = len(samples_filenames)
-    n_classes = len(reference_data)
+    n_classes = len(city_labels)
     results = {
         "simple": np.zeros((n_samples, n_classes)),
         "fractional": np.zeros((n_samples, n_classes)),
@@ -231,8 +220,8 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
 
     for sample_idx, filename in enumerate(samples_filenames):
         print(f'{sample_idx=}')
-        sample_sketches = preprocess_sample(filename, human_set, k, s, seed, ci, bin_size)
-        score_matrix = classify_sample(sample_sketches, reference_data)
+        sample_sketches = preprocess_sample(filename, human_set, k, seed) # list of kmers lists
+        score_matrix = classify_sample(sample_sketches, reference_data, city_labels)
         results['jc'][sample_idx, :] = np.sum(score_matrix, axis=0)
         # sample_scores = calculate_scores(score_matrix, threshold, max_matches=5)  # Example threshold/max_matches
         # for score_type in results.keys():
@@ -243,19 +232,3 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     utils.save_to_file(samples_filenames, city_labels, results['jc'], f'data/outs/{output_file}_jc.tsv')
     return score_matrix
 
-def reverse_complement(seq: str) -> str:
-    complement = {
-        'A': 'T',
-        'T': 'A',
-        'C': 'G',
-        'G': 'C',
-        'a': 't',
-        't': 'a',
-        'c': 'g',
-        'g': 'c'
-    }
-    
-    rev_seq = ['A'] * len(seq)  # arbitrary initialization of reversed complement sequence
-    for i in range(len(seq)-1, -1, -1): 
-        rev_seq[len(seq)-1-i] = complement[seq[i]]
-    return ''.join(rev_seq)

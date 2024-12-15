@@ -61,7 +61,7 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
     ci = 1
     dataset_sketch = set()
     print(filename)
-    with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as f:
+    with gzip.open(f'{dir}{filename}', 'rt') as f:
         while True:
             chunk = f.read(10**6)
             chunk = re.sub(r'>.*\n', 'N', chunk)
@@ -263,8 +263,8 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
         for score_type in results.keys():
             results[score_type][sample_idx, :] = sample_scores[score_type]
 
-    for score_type in results.keys():
-       utils.save_to_file(samples_filenames, city_labels, results[score_type], f'{output_file}_{score_type}.tsv')
+    utils.save_to_file(samples_filenames, city_labels, results[score_type], output_file)
+
     return score_matrix
 
 def reverse_complement(seq: str) -> str:

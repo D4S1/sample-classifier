@@ -2,7 +2,7 @@ import classifier_helper
 import utils
 import time
 
-def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24, ci: int = 4, seed=12345, M: int = 5, threshold: float = 0.3):
+def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24, ci: int = 4, seed=12345, M: int = 3, threshold: float = 0.265):
 
     human_sketch = utils.load_pickle('human_sketch.pkl')
     # start = time.time()

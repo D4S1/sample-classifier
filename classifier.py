@@ -10,11 +10,12 @@ def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24,
     # human_sketch = classifier_helper.preprocess_human('gencode.v47.transcripts.fa', k, seed, ci)
     # print(f'human sketch prep: {(time.time()-start)/60} min')
     # print(f'human sketch len {len(human_sketch)}')
-    
+    print("Prepering the reference")
     start = time.time()
     city_labels, cities_sketches = classifier_helper.preprocess_reference(train_data_file, k=k, human_set = human_sketch, seed=seed, ci=ci)
     print(f'reference prep: {(time.time()-start)/60} min')
 
+    print("Classification")
     start = time.time()
     sample_classification = classifier_helper.classify_samples(test_data_file, output_file, cities_sketches, city_labels, human_sketch, k, seed, M=M, T=threshold)
     print(f'classification: {(time.time()-start)/60} min')

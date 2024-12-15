@@ -60,6 +60,7 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
     """
     ci = 1
     dataset_sketch = set()
+    print(filename)
     with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as f:
         while True:
             chunk = f.read(10**6)
@@ -68,12 +69,11 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
 
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
-            print(f'{len(dataset_sketch)}')
-            if len(dataset_sketch) >= 5*10**6:
-                dataset_sketch = set(list(dataset_sketch)[:5*10**5])
+            if len(dataset_sketch) >= 10**6:
+                dataset_sketch = set(list(dataset_sketch)[:10**4])
             if not chunk:
                 break
-    return dataset_sketch
+    return set(list(dataset_sketch)[:10**4])
 
 def preprocess_human(filename: str, k: int, seed: int, ci: int):
     """
@@ -96,7 +96,7 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             print(f'{len(dataset_sketch)=}')
-            if len(dataset_sketch) >= 10**7:
+            if len(dataset_sketch) >= 10**6:
                 dataset_sketch = set(list(dataset_sketch)[:5*10**6])
             if not chunk:
                 break

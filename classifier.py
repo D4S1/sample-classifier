@@ -15,9 +15,9 @@ def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24,
     print("Prepering the reference")
     start = time.time()
     city_labels, cities_sketches = classifier_helper.preprocess_reference(train_data_file, k=k, human_set = human_sketch, seed=seed, ci=ci)
-    utils.save_to_pickle(city_labels, 'labels5.pkl')
-    utils.save_to_pickle(cities_sketches, 'sketches5.pkl')
     print(f'reference prep: {(time.time()-start)/60} min')
+    for c, s in cities_sketches.items():
+        print(f'{c}: {len(s)}')
 
     print("Classification")
     start = time.time()

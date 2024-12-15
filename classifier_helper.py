@@ -123,6 +123,7 @@ def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int,
     
     for city, sketch_set in cities_sketches.items():
         cities_sketches[city] = filter_human(sketch_set, human_set)
+        cities_sketches[city] = set(list(sketch_set)[:10**5])
 
     return city_labels, cities_sketches
 

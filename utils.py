@@ -37,7 +37,7 @@ def load_dataset(filename: str, dir: str='data/') -> List[str]:
     :return: list of sequences as strings
     """
     sequences = []
-    with gzip.open(f'{dir}{filename}', 'rt') as file:  # open in text mode
+    with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as file:  # open in text mode
         sequence = []
         for line in file:
             line = line.strip()

@@ -70,10 +70,10 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             if len(dataset_sketch) >= 10**6:
-                dataset_sketch = set(list(dataset_sketch)[:10**4])
+                dataset_sketch = set(list(dataset_sketch)[:10**5])
             if not chunk:
                 break
-    return set(list(dataset_sketch)[:10**4])
+    return set(list(dataset_sketch)[:10**5])
 
 def preprocess_human(filename: str, k: int, seed: int, ci: int):
     """
@@ -97,10 +97,10 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             print(f'{len(dataset_sketch)=}')
             if len(dataset_sketch) >= 10**6:
-                dataset_sketch = set(list(dataset_sketch)[:5*10**6])
+                dataset_sketch = set(list(dataset_sketch)[:10**5])
             if not chunk:
                 break
-    return dataset_sketch
+    return set(list(dataset_sketch)[:10**4])
 
 
 def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int, ci: int) -> dict:
@@ -256,7 +256,6 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     }
 
     for sample_idx, filename in enumerate(samples_filenames):
-        print(f'{sample_idx=}')
         sample_sketches = preprocess_sample(filename, human_set, k, seed, dir=os.path.dirname(test_data_file)+'/') # list of kmers lists
         score_matrix = classify_sample(sample_sketches, reference_data, city_labels, k)
         sample_scores = calculate_scores(score_matrix, T, max_matches=M)  # Example threshold/max_matches

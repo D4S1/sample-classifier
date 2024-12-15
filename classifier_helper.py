@@ -4,6 +4,7 @@ import numpy as np
 from typing import List, Set, Dict
 import gzip
 import re
+import os
 
 
 def kmer_set(seq: str, k: int, seed: int, ci: int) -> set:
@@ -47,7 +48,7 @@ def filter_human(input_sketch: set, human_set: set) -> set:
     return input_sketch.difference(human_set)
 
 
-def preprocess_dataset(filename: str, k: int, seed: int, ci: int):
+def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data/"):
     """
     Preprocesses a dataset by extracting k-mers and returning a sketch of the dataset.
 
@@ -59,7 +60,8 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int):
     """
     ci = 1
     dataset_sketch = set()
-    with gzip.open(f'data/{filename}', 'rt') as f:
+    print(filename)
+    with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as f:
         while True:
             chunk = f.read(10**6)
             chunk = re.sub(r'>.*\n', 'N', chunk)
@@ -67,11 +69,11 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int):
 
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
-            if len(dataset_sketch) >= 10**7:
-                dataset_sketch = set(list(dataset_sketch)[:5*10**6])
+            if len(dataset_sketch) >= 10**6:
+                dataset_sketch = set(list(dataset_sketch)[:10**4])
             if not chunk:
                 break
-    return dataset_sketch
+    return set(list(dataset_sketch)[:10**4])
 
 def preprocess_human(filename: str, k: int, seed: int, ci: int):
     """
@@ -85,7 +87,7 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
     """
     ci = 1
     dataset_sketch = set()
-    with open(f'data/{filename}', 'r') as f:
+    with open(filename, 'r') as f:
         while True:
             chunk = f.read(10**6)
             chunk = re.sub(r'>.*\n', 'N', chunk)
@@ -94,7 +96,7 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             print(f'{len(dataset_sketch)=}')
-            if len(dataset_sketch) >= 10**7:
+            if len(dataset_sketch) >= 10**6:
                 dataset_sketch = set(list(dataset_sketch)[:5*10**6])
             if not chunk:
                 break
@@ -116,7 +118,7 @@ def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int,
     cities_sketches = {city : set() for city in city_labels}  # {city : set of dataset sketches}
 
     for filename, city in train_data.items():
-        dataset_sketch = preprocess_dataset(filename, k=k, seed=seed, ci=ci)
+        dataset_sketch = preprocess_dataset(filename, k=k, seed=seed, ci=ci, dir=os.path.dirname(train_filename)+'/')
         cities_sketches[city] = cities_sketches[city].union(dataset_sketch)
     
     for city, sketch_set in cities_sketches.items():
@@ -192,7 +194,7 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
                     scores['weighted'][city] += score / total_score
     return scores
 
-def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int) -> List[set]:
+def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int, dir: str='data/') -> List[set]:
     """
     Preprocess a sample by generating sketches for each read after filtering human sequences.
 
@@ -203,7 +205,7 @@ def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int) -> Li
     :param ci: Context-specific parameter for generating k-mers.
     :return: List of sketches (sets) representing the reads in the sample.
     """
-    dataset = utils.load_dataset(filename)
+    dataset = utils.load_dataset(filename, dir=dir)
     reads_kmers = []
 
     for read in dataset:
@@ -255,14 +257,14 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
 
     for sample_idx, filename in enumerate(samples_filenames):
         print(f'{sample_idx=}')
-        sample_sketches = preprocess_sample(filename, human_set, k, seed) # list of kmers lists
+        sample_sketches = preprocess_sample(filename, human_set, k, seed, dir=os.path.dirname(test_data_file)+'/') # list of kmers lists
         score_matrix = classify_sample(sample_sketches, reference_data, city_labels, k)
         sample_scores = calculate_scores(score_matrix, T, max_matches=M)  # Example threshold/max_matches
         for score_type in results.keys():
             results[score_type][sample_idx, :] = sample_scores[score_type]
 
     for score_type in results.keys():
-       utils.save_to_file(samples_filenames, city_labels, results[score_type], f'data/outs/{output_file}_{score_type}.tsv')
+       utils.save_to_file(samples_filenames, city_labels, results[score_type], f'{output_file}_{score_type}.tsv')
     return score_matrix
 
 def reverse_complement(seq: str) -> str:

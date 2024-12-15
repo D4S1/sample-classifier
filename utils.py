@@ -30,14 +30,14 @@ def load_samples(filename: str) -> list:
         samples = f.read().strip().split("\n")[1:]
     return samples
 
-def load_dataset(filename: str) -> List[str]:
+def load_dataset(filename: str, dir: str='data/') -> List[str]:
     """
     Load sequences from a gzipped FASTA file.
     :param filename (str): Path to the gzipped FASTA file
     :return: list of sequences as strings
     """
     sequences = []
-    with gzip.open(f'data/{filename}', 'rt') as file:  # open in text mode
+    with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as file:  # open in text mode
         sequence = []
         for line in file:
             line = line.strip()

@@ -61,7 +61,7 @@ def evaluate_downsampling(training_file: str, testing_file: str, ground_truth_fi
     :param city_labels: Dictionary mapping dataset filenames to city labels.
     """
 
-    city_labels = list(set(utils.load_ref(training_file).values()))
+    # city_labels = list(set(utils.load_ref(training_file).values()))
     results = []
 
 
@@ -70,11 +70,11 @@ def evaluate_downsampling(training_file: str, testing_file: str, ground_truth_fi
 
         # Downsample training data
         train_downsampled = f"{output_prefix}_train_{int(ratio * 100)}.fasta.gz"
-        downsample_fasta(training_file, train_downsampled, ratio, city_labels)
+        downsample_fasta(training_file, train_downsampled, ratio)
 
         # Downsample testing data
         test_downsampled = f"{output_prefix}_test_{int(ratio * 100)}.fasta.gz"
-        downsample_fasta(testing_file, test_downsampled, ratio, city_labels)
+        downsample_fasta(testing_file, test_downsampled, ratio)
 
         # Run the classifier
         classifier_output = f"{output_prefix}_output_{int(ratio * 100)}.tsv"

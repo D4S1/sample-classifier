@@ -2,7 +2,7 @@ import classifier_helper
 import utils
 import time
 
-def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24, s: int=100000, ci: int = 4, seed=12345, M: int = 5, threshold: float = 0.3):
+def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24, ci: int = 4, seed=12345, M: int = 5, threshold: float = 0.3):
 
     human_sketch = utils.load_pickle('human_sketch.pkl')
     # start = time.time()
@@ -11,7 +11,7 @@ def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24,
     print(f'human sketch len {len(human_sketch)}')
     
     start = time.time()
-    city_labels, cities_sketches = classifier_helper.preprocess_reference(train_data_file, k=k, s=s, human_set = human_sketch, seed=seed, ci=ci)
+    city_labels, cities_sketches = classifier_helper.preprocess_reference(train_data_file, k=k, human_set = human_sketch, seed=seed, ci=ci)
     print(f'reference prep: {(time.time()-start)/60} min')
     for city, sketch in cities_sketches.items():
         print(f'{city}: {len(sketch)}')

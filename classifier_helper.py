@@ -53,7 +53,6 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int):
 
     :param dataset: List of sequneces
     :param k: k-mer size.
-    :param s: Sketch size.
     :param seed: Random seed for reproducibility.
     :param ci: minimum  kmer frequency
     :return: Sketch of the k-mer set with size s.
@@ -80,7 +79,6 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
 
     :param dataset: List of sequneces
     :param k: k-mer size.
-    :param s: Sketch size.
     :param seed: Random seed for reproducibility.
     :param ci: minimum  kmer frequency
     :return: Sketch of the k-mer set with size s.
@@ -103,13 +101,12 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
     return dataset_sketch
 
 
-def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, seed: int, ci: int) -> dict:
+def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int, ci: int) -> dict:
     """
     Preprocesses a dataset by extracting k-mers and returning a dictionary with skeuches of the cities.
 
     :param train_filename: file containing meta filenames of reference datasets with their classification.
     :param k: kmer size.
-    :param s: sketch size.
     :param seed: Random seed for reproducibility.
     :param ci: minimum  kmer frequency
     :return: dictionary of the k-mer sketches of size s representing cities.
@@ -122,25 +119,31 @@ def preprocess_reference(train_filename: str, k: int, s: int, human_set: set, se
         dataset_sketch = preprocess_dataset(filename, k=k, seed=seed, ci=ci)
         cities_sketches[city] = cities_sketches[city].union(dataset_sketch)
     
-    # for city, sketch_set in cities_sketches.items():
-        # cities_sketches[city] = filter_human(sketch_set, human_set)
-        # cities_sketches[city] =  set(list(dataset_sketch)[:s])
+    for city, sketch_set in cities_sketches.items():
+        cities_sketches[city] = filter_human(sketch_set, human_set)
 
     return city_labels, cities_sketches
 
 
-def estimate_jackard(read_kmers: list, city_kmers: set) -> float:
+def jackard_score(read_kmers: list, city_kmers: set) -> float:
     """
     Estimates the Jaccard similarity between a read sketch and a city sketch.
 
     :param read_sketch: Sketch of the read.
     :param city_sketch: Sketch of the city.
-    :param s: Sketch size.
     :return: Estimated Jaccard similarity.
     """
     return len(set(read_kmers) & city_kmers) / len(set(read_kmers) | city_kmers)
 
 def cometa_score(read_kmers: list, city_kmers: set, k: int) -> float:
+    """
+    Computes the CoMeta score for a given list of kmers based on matches with a reference set of kmers.
+
+    :param read_kmers: List of kmers from the read to be scored.
+    :param city_kmers: Set of kmers from the reference city to match against.
+    :param k: Length of the kmers used for scoring.
+    :return: Normalized CoMeta score as a float.
+    """
     last = -k
     score = 0
     for i, kmer in enumerate(read_kmers):
@@ -148,20 +151,6 @@ def cometa_score(read_kmers: list, city_kmers: set, k: int) -> float:
             score += k - max(k + last - i, 0)
             last = i
     return score / (len(read_kmers) + 2* k - 2)
-
-
-
-def simple_sum(jackard_estimates: np.ndarray, T: float) -> np.ndarray:
-    """
-    Matches sample to city via simple sum criterion.
-
-    :param jackard_estimates: NumPy array of shape (number of reads, number of cities).
-    :param T: Threshold value for comparison.
-    :return: Updated NumPy array with values as 0 or 1.
-    """
-    jackard_estimates = (jackard_estimates >= T).astype(int)
-    cities_sums = jackard_estimates.sum(axis=0)
-    return np.argmax(cities_sums)  # return maximum column index
 
 
 def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) -> dict:
@@ -277,6 +266,12 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     return score_matrix
 
 def reverse_complement(seq: str) -> str:
+    """
+    Computes the reverse complement of a DNA sequence.
+
+    :param seq: DNA sequence as a string, which may include both uppercase and lowercase bases.
+    :return: Reverse complement of the input DNA sequence as a string.
+    """
     complement = {
         'A': 'T',
         'T': 'A',

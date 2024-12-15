@@ -180,9 +180,16 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
         "weighted": [0] * n_col,
     }
 
-    for read in read_scores:                
+    for read in read_scores:
+        if read.sum() == 0:
+            continue
+        
         matching_classes = [(city, score) for city, score in enumerate(read) if score >= threshold]
-        print(f'{len(matching_classes)}')
+
+        if len(matching_classes) == 0:
+            max_value = np.max(read)
+            matching_classes= [(pos, max_value) for pos in np.where(read == max_value)[0]]
+
         if len(matching_classes) <= max_matches:
 
             n = len(matching_classes)

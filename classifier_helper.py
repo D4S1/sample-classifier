@@ -60,8 +60,7 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
     """
     ci = 1
     dataset_sketch = set()
-    print(filename)
-    with gzip.open(f'/home/staff/iinf/ajank/adg/{filename}', 'rt') as f:
+    with gzip.open(f'{dir}{filename}', 'rt') as f:
         while True:
             chunk = f.read(10**6)
             chunk = re.sub(r'>.*\n', 'N', chunk)

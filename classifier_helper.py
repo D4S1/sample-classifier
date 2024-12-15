@@ -68,8 +68,9 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
 
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
-            if len(dataset_sketch) >= 10**7:
-                dataset_sketch = set(list(dataset_sketch)[:5*10**6])
+            print(f'{len(dataset_sketch)}')
+            if len(dataset_sketch) >= 5*10**6:
+                dataset_sketch = set(list(dataset_sketch)[:5*10**5])
             if not chunk:
                 break
     return dataset_sketch

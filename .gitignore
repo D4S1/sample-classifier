@@ -3,6 +3,7 @@ data/
 env/
 .DS_Store
 pg.py
+downsample1.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

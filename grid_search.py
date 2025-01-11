@@ -35,10 +35,10 @@ sweep_config = {
     "method": "bayes",
     "metric": {"name": "auc", "goal": "maximize"},
     "parameters": {
-        "k": {"values": [15, 19, 23, 27, 31]},
+        "k": {"values": [3, 6, 9, 11, 15, 19, 23, 27]},
         "ci": {"values": [1, 2, 3, 4]},
         "threshold": {"min": 0.2, "max": 0.3},
-        "M": {"values": [1, 2, 3, 4, 5]},
+        "M": {"values": [2, 3, 4, 5]},
         "human_sketch_size": {"values": [10**3, 5*10**3, 10**4, 5*10**4, 10**5]}, 
         "ref_sketch_size": {"values": [10**3, 5*10**3, 10**4, 5*10**4, 10**5]},
         "sketch_size": {"values": [10**3, 5*10**3, 10**4, 5*10**4, 10**5]}
@@ -48,7 +48,7 @@ sweep_config = {
 wandb.login()
 
 # Initialize sweep
-sweep_id = wandb.sweep(sweep_config, project='Sample-Classifier')
+sweep_id = wandb.sweep(sweep_config, project='SampleClassifier')
 
 # Run sweep
 wandb.agent(sweep_id, function=evaluate_model)

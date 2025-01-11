@@ -1,5 +1,6 @@
 # custom ignore
 data/
+data2/
 env/
 .DS_Store
 pg.py

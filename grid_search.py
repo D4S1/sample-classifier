@@ -73,7 +73,7 @@ sweep_config = {
     "method": "bayes",
     "metric": {"name": "penalized_auc", "goal": "maximize"},
     "parameters": {
-        "k": {"values": list(range(5, 32))},
+        "k": {"values": list(range(5, 32, 2))},
         "ci": {"values": list(range(1, 7))},
         "threshold": {"min": 0.1, "max": 0.4},
         "M": {"values": [2, 3, 4, 5]},

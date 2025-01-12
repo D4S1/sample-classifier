@@ -1,6 +1,7 @@
 # custom ignore
 data/
-data2/
+full_data/
+wandb/
 env/
 .DS_Store
 pg.py

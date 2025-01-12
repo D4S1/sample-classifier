@@ -8,8 +8,13 @@ def main(train_data_file: str, test_data_file: str, output_file: str, k: int=24,
     # human_sketch = utils.load_pickle('human_sketch.pkl')
     # human_sketch = utils.load_pickle('human_104.pkl')
     # start = time.time()
-    human_sketch = classifier_helper.preprocess_human('data/gencode.v47.transcripts.fa', k, seed, ci, human_sketch_size)
-    utils.save_to_pickle(human_sketch, f'human_{sketch_size}_{k}.pkl')
+    
+    try:
+        human_sketch = utils.load_pickle(f'human_{sketch_size}_{k}.pkl')
+    except FileNotFoundError:
+        human_sketch = classifier_helper.preprocess_human('data/gencode.v47.transcripts.fa', k, seed, ci, human_sketch_size)
+        utils.save_to_pickle(human_sketch, f'human_{sketch_size}_{k}.pkl')
+
     # print(f'human sketch prep: {(time.time()-start)/60} min')
     print(f'human sketch len {len(human_sketch)}')
     print("Prepering the reference")

@@ -60,7 +60,7 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
     """
     ci = 1
     dataset_sketch = set()
-    with gzip.open(f'{dir}{filename}', 'rt') as f:
+    with gzip.open(f"{dir}{filename}", 'rt') as f:
         while True:
             chunk = f.read(10**6)
             chunk = re.sub(r'>.*\n', 'N', chunk)
@@ -102,7 +102,7 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
     return set(list(dataset_sketch)[:10**4])
 
 
-def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int, ci: int) -> dict:
+def preprocess_reference(train_filename: str, k: int, seed: int, ci: int) -> dict:
     """
     Preprocesses a dataset by extracting k-mers and returning a dictionary with skeuches of the cities.
 
@@ -117,11 +117,11 @@ def preprocess_reference(train_filename: str, k: int, human_set: set, seed: int,
     cities_sketches = {city : set() for city in city_labels}  # {city : set of dataset sketches}
 
     for filename, city in train_data.items():
+        print(filename)
         dataset_sketch = preprocess_dataset(filename, k=k, seed=seed, ci=ci, dir=os.path.dirname(train_filename)+'/')
         cities_sketches[city] = cities_sketches[city].union(dataset_sketch)
     
     for city, sketch_set in cities_sketches.items():
-        cities_sketches[city] = filter_human(sketch_set, human_set)
         cities_sketches[city] = set(list(sketch_set)[:10**5])
 
     return city_labels, cities_sketches
@@ -194,46 +194,40 @@ def calculate_scores(read_scores: np.array, threshold: float, max_matches: int) 
                     scores['weighted'][city] += score / total_score
     return scores
 
-def preprocess_sample(filename: str, human_sketch: set, k: int, seed: int, dir: str='data/') -> List[set]:
+
+def classify_sample(filename: str, k: int, seed: int, reference: Dict[str, set], city_labels: List[str], dir: str = 'data/') -> np.array:
     """
-    Preprocess a sample by generating sketches for each read after filtering human sequences.
+    Calculate the score matrix for a sample by directly processing reads and comparing them to reference sketches.
 
     :param filename: Path to the input FASTA file.
     :param k: Length of k-mers to generate.
-    :param s: Size of the sketch.
     :param seed: Seed for hash functions used in sketching.
-    :param ci: Context-specific parameter for generating k-mers.
-    :return: List of sketches (sets) representing the reads in the sample.
-    """
-    dataset = utils.load_dataset(filename, dir=dir)
-    reads_kmers = []
-
-    for read in dataset:
-        read = read + "N" + reverse_complement(read)
-        read_kmers = [mmh3.hash(read[i:i+k], seed) for i in range(len(read) - k + 1) if 'N' not in read[i:i+k]]
-        if len(set(read_kmers) & human_sketch) == 0:  # Filter out reads overlapping with human sequences
-            reads_kmers.append(read_kmers)
-    return reads_kmers
-
-def classify_sample(sample_sketches: List[set], reference: Dict[str, set], city_labes: List[str], k: int) -> np.array:
-    """
-    Classify a sample by comparing read sketches against reference sketches.
-
-    :param sample_sketches: List of sketches representing the reads in the sample.
     :param reference: Dictionary of reference sketches (key: class name, value: sketch set).
+    :param city_labels: List of class labels corresponding to the reference sketches.
+    :param dir: Directory containing the input dataset file.
     :return: NumPy array of shape (number of reads, number of reference classes) with similarity scores.
     """
-    n_reads = len(sample_sketches)
-    n_cities = len(city_labes)
+    # Load the dataset
+    dataset = utils.load_dataset(filename, dir=dir)
+
+    # Initialize the score matrix
+    n_reads = len(dataset)
+    n_cities = len(city_labels)
     score_matrix = np.zeros((n_reads, n_cities))
 
-    for i, read_kmers in enumerate(sample_sketches):
-        for j, city in enumerate(city_labes):
+    # Process each read and calculate scores
+    for i, read in enumerate(dataset):
+        # Generate k-mers for the read and its reverse complement
+        read = read + "N" + reverse_complement(read)
+        read_kmers = [mmh3.hash(read[j:j+k], seed) for j in range(len(read) - k + 1) if 'N' not in read[j:j+k]]
+
+        # Compare to each reference sketch
+        for j, city in enumerate(city_labels):
             score_matrix[i, j] = cometa_score(read_kmers, reference[city], k)
 
     return score_matrix
 
-def classify_samples(test_data_file: str, output_file: str, reference_data: dict, city_labels: List[str], human_set: set, k: int, seed: int, M: int, T: int) -> Dict[str, np.array]:
+def classify_samples(test_data_file: str, output_file: str, reference_data: dict, city_labels: List[str], k: int, seed: int, M: int, T: int) -> Dict[str, np.array]:
     """
     Classify multiple samples, calculating scores for each sample and reference class.
 
@@ -249,23 +243,15 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
     samples_filenames = utils.load_samples(test_data_file)
     n_samples = len(samples_filenames)
     n_classes = len(city_labels)
-    results = {
-        "simple": np.zeros((n_samples, n_classes)),
-        "fractional": np.zeros((n_samples, n_classes)),
-        "weighted": np.zeros((n_samples, n_classes)),
-    }
+    score = np.zeros((n_samples, n_classes))
 
     for sample_idx, filename in enumerate(samples_filenames):
         print(f'{sample_idx=}')
-        sample_sketches = preprocess_sample(filename, human_set, k, seed, dir=os.path.dirname(test_data_file)+'/') # list of kmers lists
-        score_matrix = classify_sample(sample_sketches, reference_data, city_labels, k)
-        sample_scores = calculate_scores(score_matrix, T, max_matches=M)  # Example threshold/max_matches
-        for score_type in results.keys():
-            results[score_type][sample_idx, :] = sample_scores[score_type]
+        score_matrix = classify_sample(filename, k=k, seed=seed, reference=reference_data, city_labels=city_labels)
+        score[sample_idx, :] = calculate_scores(score_matrix, T, max_matches=M)['weighted']
 
-    utils.save_to_file(samples_filenames, city_labels, results[score_type], output_file)
+    utils.save_to_file(samples_filenames, city_labels, score, output_file)
 
-    return score_matrix
 
 def reverse_complement(seq: str) -> str:
     """

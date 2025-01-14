@@ -1,7 +1,7 @@
 import utils
 import mmh3
 import numpy as np
-from typing import List, Set, Dict
+from typing import List, Dict
 import gzip
 import re
 import os
@@ -247,7 +247,7 @@ def classify_samples(test_data_file: str, output_file: str, reference_data: dict
 
     for sample_idx, filename in enumerate(samples_filenames):
         print(f'{sample_idx=}')
-        score_matrix = classify_sample(filename, k=k, seed=seed, reference=reference_data, city_labels=city_labels)
+        score_matrix = classify_sample(filename, k=k, seed=seed, reference=reference_data, city_labels=city_labels, dir=os.path.dirname(test_data_file)+'/')
         score[sample_idx, :] = calculate_scores(score_matrix, T, max_matches=M)['weighted']
 
     utils.save_to_file(samples_filenames, city_labels, score, output_file)

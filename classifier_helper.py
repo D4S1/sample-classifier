@@ -48,7 +48,7 @@ def filter_human(input_sketch: set, human_set: set) -> set:
     return input_sketch.difference(human_set)
 
 
-def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data/"):
+def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data/", sketch_size: int=10**4):
     """
     Preprocesses a dataset by extracting k-mers and returning a sketch of the dataset.
 
@@ -69,12 +69,12 @@ def preprocess_dataset(filename: str, k: int, seed: int, ci: int, dir: str="data
             chunk_kmers = kmer_set(chunk, k, seed, ci)
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             if len(dataset_sketch) >= 10**6:
-                dataset_sketch = set(list(dataset_sketch)[:10**5])
+                dataset_sketch = set(list(dataset_sketch)[:sketch_size * 10])
             if not chunk:
                 break
-    return set(list(dataset_sketch)[:10**4])
+    return set(list(dataset_sketch)[:sketch_size])
 
-def preprocess_human(filename: str, k: int, seed: int, ci: int):
+def preprocess_human(filename: str, k: int, seed: int, ci: int, human_sketch_size: int=10**4):
     """
     Preprocesses a dataset by extracting k-mers and returning a sketch of the dataset.
 
@@ -96,10 +96,10 @@ def preprocess_human(filename: str, k: int, seed: int, ci: int):
             dataset_sketch = dataset_sketch.union(chunk_kmers)
             print(f'{len(dataset_sketch)=}')
             if len(dataset_sketch) >= 10**6:
-                dataset_sketch = set(list(dataset_sketch)[:10**5])
+                dataset_sketch = set(list(dataset_sketch)[:human_sketch_size * 10])
             if not chunk:
                 break
-    return set(list(dataset_sketch)[:10**4])
+    return set(list(dataset_sketch)[:human_sketch_size])
 
 
 def preprocess_reference(train_filename: str, k: int, seed: int, ci: int) -> dict:

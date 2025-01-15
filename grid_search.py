@@ -86,7 +86,7 @@ sweep_config = {
 wandb.login()
 
 # Initialize sweep
-sweep_id = wandb.sweep(sweep_config, project='MetagenomicsClassifier')
+sweep_id = wandb.sweep(sweep_config, project='MetaSampleClassifier')
 
 # Run sweep
 wandb.agent(sweep_id, function=evaluate_model)

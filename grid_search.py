@@ -20,9 +20,6 @@ def evaluate_model(config=None):
         ci = config.ci
         threshold = config.threshold
         M = config.M
-        human_sketch_size = config.human_sketch_size
-        ref_sketch_size = config.ref_sketch_size
-        sketch_size = config.sketch_size
 
         # Start tracking memory usage in a separate thread
         mem_usage = []
@@ -38,7 +35,7 @@ def evaluate_model(config=None):
 
         try:
             # Evaluate the model
-            auc = average_auc(k=k, ci=ci, M=M, threshold=threshold, human_sketch_size=human_sketch_size, ref_sketch_size=ref_sketch_size, sketch_size=sketch_size)
+            auc = average_auc(k=k, ci=ci, M=M, threshold=threshold)
         
         finally:
             # Stop memory tracking
@@ -60,11 +57,11 @@ def evaluate_model(config=None):
         })
 
 
-def average_auc(k, ci, M, threshold, human_sketch_size, ref_sketch_size, sketch_size):
+def average_auc(k, ci, M, threshold):
     """
     Run the classifier and calculate AUC.
     """
-    classifier.main('full_data/training_data.tsv', 'full_data/testing_data.tsv', 'full_data/outs/run2.tsv', k=k, ci=ci, M=M, threshold=threshold, human_sketch_size=human_sketch_size, ref_sketch_size=ref_sketch_size, sketch_size=sketch_size)
+    classifier.main('full_data/training_data.tsv', 'full_data/testing_data.tsv', 'full_data/outs/run2.tsv', k=k, ci=ci, M=M, threshold=threshold)    
     return evaluate.calculate_auc_roc('full_data/outs/run2.tsv', 'full_data/testing_ground_truth.tsv')
 
 
@@ -76,10 +73,7 @@ sweep_config = {
         "k": {"values": list(range(5, 32, 2))},
         "ci": {"values": list(range(1, 7))},
         "threshold": {"min": 0.1, "max": 0.4},
-        "M": {"values": [2, 3, 4, 5]},
-        "human_sketch_size": {"values": [500, 10**3, 5*10**3, 10**4, 5*10**4, 10**5]}, 
-        "ref_sketch_size": {"values": [500, 10**3, 5*10**3, 10**4, 5*10**4, 10**5]},
-        "sketch_size": {"values": [500, 10**3, 5*10**3, 10**4, 5*10**4]}
+        "M": {"values": list(range(2, 7))},
     }
 }
 
